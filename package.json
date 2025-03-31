@@ -1,0 +1,77 @@
+{
+  "name": "totpify",
+  "version": "1.0.0",
+  "description": "Advanced TOTP Library with enhanced security features and algorithm support",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "totpify": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "prepublishOnly": "npm run build",
+    "lint": "tsc --noEmit",
+    "coverage": "jest --coverage",
+    "start": "node dist/cli.js",
+    "demo": "node examples/totpify.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wickstudio/totpify.git"
+  },
+  "homepage": "https://github.com/wickstudio/totpify#readme",
+  "bugs": {
+    "url": "https://github.com/wickstudio/totpify/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/wickstudio"
+  },
+  "keywords": [
+    "totp",
+    "2fa",
+    "authentication",
+    "security",
+    "otp",
+    "two-factor",
+    "mfa",
+    "sha256",
+    "sha512",
+    "authenticator",
+    "time-based",
+    "one-time-password",
+    "google-authenticator",
+    "discord",
+    "multi-factor"
+  ],
+  "author": {
+    "name": "Wick Studio",
+    "email": "info@wick-studio.com",
+    "url": "https://github.com/wickstudio"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "crypto-js": "^4.1.1",
+    "qrcode": "^1.5.3"
+  },
+  "devDependencies": {
+    "@types/crypto-js": "^4.1.1",
+    "@types/jest": "^29.5.3",
+    "@types/node": "^18.16.0",
+    "@types/qrcode": "^1.5.1",
+    "jest": "^29.6.1",
+    "readline-sync": "^1.4.10",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.1.6"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

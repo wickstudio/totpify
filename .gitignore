@@ -39,7 +39,6 @@ lerna-debug.log*
 
 # Package files
 yarn.lock
-package-lock.json
 
 # Testing
 examples/test-qr.png

@@ -8,6 +8,7 @@ Advanced TOTP tooling for Node.js with TypeScript support, otpauth helpers, reco
 
 [![npm version](https://img.shields.io/npm/v/totpify.svg?style=flat-square)](https://www.npmjs.org/package/totpify)
 [![install size](https://packagephobia.com/badge?p=totpify)](https://packagephobia.com/result?p=totpify)
+![CI](https://github.com/wickstudio/totpify/actions/workflows/node.yml/badge.svg)
 [![npm downloads](https://img.shields.io/npm/dm/totpify.svg?style=flat-square)](http://npm-stat.com/charts.html?package=totpify)
 [![GitHub license](https://img.shields.io/github/license/wickstudio/totpify)](https://github.com/wickstudio/totpify/blob/master/LICENSE)
 

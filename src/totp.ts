@@ -1,6 +1,16 @@
-import { TOTPOptions, VerifyResult, HashAlgorithm, QRCodeOptions } from './types';
-import { decodeBase32, generateHOTP, getCurrentTimestamp, normalizeSecret, getHashFunction } from './utils';
-import * as QRCode from 'qrcode';
+import { TOTPOptions, VerifyResult, QRCodeOptions } from './types';
+import {
+  assertDigits,
+  assertPeriod,
+  assertTimestamp,
+  assertWindow,
+  constantTimeEqual,
+  decodeBase32,
+  encodeBase32,
+  generateHOTP,
+  getRandomBytes,
+} from './utils';
+import { generateOtpauthUri, generateQRCodeDataUrl } from './otpauth';
 
 /**
  * Generates a Time-Based One-Time Password (TOTP) according to RFC 623
@@ -19,6 +29,10 @@ export function generateTOTP(
     period = 30,
     timestamp = Date.now()
   } = options;
+
+  assertDigits(digits);
+  assertPeriod(period);
+  assertTimestamp(timestamp);
 
   if (!secret) {
     throw new Error('Secret must be provided');
@@ -61,6 +75,11 @@ export function verifyTOTP(
     timestamp = Date.now()
   } = options;
 
+  assertDigits(digits);
+  assertPeriod(period);
+  assertTimestamp(timestamp);
+  assertWindow(window);
+
   if (!token || token.length !== digits || !/^\d+$/.test(token)) {
     return { valid: false };
   }
@@ -74,7 +93,7 @@ export function verifyTOTP(
       timestamp: checkTime,
     });
 
-    if (generatedToken === token) {
+    if (constantTimeEqual(generatedToken, token)) {
       return { valid: true, delta: i };
     }
   }
@@ -94,30 +113,8 @@ export async function generateQRCode(
   secret: string,
   options: QRCodeOptions = {}
 ): Promise<string> {
-  const {
-    issuer = 'Totpify',
-    account = 'user',
-    width = 256,
-    height = 256,
-  } = options;
-
-  const normalizedSecret = normalizeSecret(secret);
-  
-  const encodedIssuer = encodeURIComponent(issuer);
-  const encodedAccount = encodeURIComponent(account);
-  
-  const uri = `otpauth://totp/${encodedIssuer}:${encodedAccount}?secret=${normalizedSecret}&issuer=${encodedIssuer}`;
-
-  try {
-    return await QRCode.toDataURL(uri, { 
-      errorCorrectionLevel: 'H',
-      type: 'image/png',
-      margin: 1,
-      width 
-    });
-  } catch (error) {
-    throw new Error(`QR code generation failed: ${(error as Error).message}`);
-  }
+  const uri = generateOtpauthUri(secret, options);
+  return generateQRCodeDataUrl(uri, options);
 }
 
 /**
@@ -127,21 +124,5 @@ export async function generateQRCode(
  */
 
 export function generateRandomSecret(length: number = 20): string {
-  const randomBytes = new Uint8Array(length);
-  
-  if (typeof window !== 'undefined' && window.crypto) {
-    window.crypto.getRandomValues(randomBytes);
-  } else {
-    const crypto = require('crypto');
-    randomBytes.set(crypto.randomBytes(length));
-  }
-  
-  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let result = '';
-  
-  for (let i = 0; i < length; i++) {
-    result += base32Chars[randomBytes[i] % base32Chars.length];
-  }
-  
-  return result;
+  return encodeBase32(getRandomBytes(length));
 }

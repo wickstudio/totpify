@@ -1,166 +1,347 @@
 # Totpify
 
-*Advanced Time-Based One-Time Password (TOTP) Library*
+<p align="center">
+  <img src="https://i.imgur.com/xuw3IHA.png" alt="Totpify Logo" width="220" />
+</p>
+
+Advanced TOTP tooling for Node.js with TypeScript support, otpauth helpers, recovery codes, and setup-ready enrollment bundles.
 
 [![npm version](https://img.shields.io/npm/v/totpify.svg?style=flat-square)](https://www.npmjs.org/package/totpify)
 [![install size](https://packagephobia.com/badge?p=totpify)](https://packagephobia.com/result?p=totpify)
 [![npm downloads](https://img.shields.io/npm/dm/totpify.svg?style=flat-square)](http://npm-stat.com/charts.html?package=totpify)
 [![GitHub license](https://img.shields.io/github/license/wickstudio/totpify)](https://github.com/wickstudio/totpify/blob/master/LICENSE)
 
-Totpify is a powerful library I built for generating and verifying Time-Based One-Time Passwords (TOTP), following RFC 6238. It's perfect for adding two-factor authentication to your apps, with support for different hash algorithms, QR code generation, and solid error handling.
+`totpify` started as a TOTP utility library and now covers a much more useful slice of real 2FA workflows:
 
-## 📸 Screenshots
+- TOTP generation and verification
+- HOTP generation
+- Base32 encode and decode helpers
+- otpauth URI generation and parsing
+- QR code generation for authenticator app onboarding
+- recovery code generation, hashing, and verification
+- enrollment bundles that package secrets, QR setup, and recovery assets together
+- policy-driven async verification with replay protection hooks
+- CLI commands for day-to-day OTP tasks
 
-Here's what the live code generator looks like in action:
+If you are building login flows, admin dashboards, internal tools, bots, or support tooling, `totpify` is designed to save you from stitching all of this together by hand.
 
-![Totpify Live Generator Screenshot](https://media.wickdev.me/9b4cb19233.png)
+## Highlights
 
-## 🔑 Features
+- Supports `SHA-1`, `SHA-256`, and `SHA-512`
+- Uses timing-safe comparison during TOTP verification
+- Validates digits, periods, timestamps, windows, and secrets at runtime
+- Accepts `bigint` counters for HOTP generation
+- Generates full `otpauth://` URIs with algorithm, digits, and period
+- Produces recovery codes ready for secure storage with `scrypt`
+- Ships a higher-level enrollment flow for setup screens and account onboarding
+- Includes policy presets, replay-store hooks, and safe verification diagnostics
 
-- ✅ **Multiple Hash Algorithms** - SHA-1, SHA-256, and SHA-512 support
-- ✅ **Automatic Base32 Handling** - No hassle with manual encoding/decoding
-- ✅ **Time Drift Tolerance** - Handles device time sync issues like a champ
-- ✅ **Solid Verification** - Full verification with time drift detection
-- ✅ **QR Code Generation** - Super easy setup with authenticator apps
-- ✅ **TypeScript Support** - Complete with type definitions
-- ✅ **Great Error Handling** - Clear and helpful error messages
-- ✅ **Performance** - Optimized for speed and efficiency
-- ✅ **CLI Tool** - Command line access to all features
+## Why Totpify
 
-## 📦 Installation
+`totpify` is designed for teams that need more than token math:
 
-Just grab it from npm:
+- It covers the full onboarding path, not just code generation.
+- It includes recovery-code and enrollment flows that usually have to be built separately.
+- It adds policy-driven verification and replay-protection hooks for production auth systems.
+- It exposes machine-readable verification results that are useful in APIs, logs, and admin tools.
+- It ships a CLI that is useful for debugging, support, and manual operational checks.
+
+If you only need a minimal TOTP helper, smaller packages are fine. If you want one package that reaches further into real 2FA workflows, `totpify` is aimed at that gap.
+
+For a practical authenticator-app guide, see [Authenticator Compatibility Guide](https://github.com/wickstudio/totpify/blob/master/docs/compatibility.md).
+
+## Comparison
+
+Comparison below is based on the public package docs linked in the notes after the table and was reviewed on April 13, 2026.
+
+| Capability | `totpify` | `speakeasy` | `otplib` |
+| --- | --- | --- | --- |
+| TOTP generation | Yes | Yes | Yes |
+| HOTP generation | Yes | Yes | Yes |
+| Base32 encode/decode helpers | Yes | Partial | Yes |
+| otpauth URI generation | Yes | Yes | Yes |
+| otpauth URI parsing | Yes | No documented parser | Yes |
+| QR code generation | Yes, built-in | External QR library | External QR library |
+| Recovery codes | Yes | No | No |
+| Enrollment bundles | Yes | No | No |
+| Policy-driven verification | Yes | No | No |
+| Replay protection hooks | Yes | No | No |
+| CLI support | Yes, built-in | No official CLI documented | No official CLI documented |
+| Diagnostics / machine-readable reasons | Yes | Partial | No documented reason codes |
+| Framework adapters | No official adapters yet | No official adapters documented | No official adapters documented |
+| TypeScript support | Yes, built-in | Community typings | Yes, built-in |
+
+Comparison notes:
+
+- For `speakeasy`, "Partial" on Base32 means the docs show Base32 secret output via `generateSecret`, but they do not document generic public encode/decode helpers.
+- For `speakeasy`, "Partial" on diagnostics refers to `verifyDelta()` returning a delta, not higher-level reason codes like `expired` or `replay_detected`.
+- For `otplib`, URI generation/parsing is part of the official ecosystem and documented through `otplib` and `@otplib/uri`.
+- For both `speakeasy` and `otplib`, QR code generation is documented using an external QR package rather than being built into the core library.
+
+Comparison sources:
+
+- `speakeasy`: https://github.com/speakeasyjs/libotp
+- `@types/speakeasy`: https://www.npmjs.com/package/%40types/speakeasy
+- `otplib`: https://otplib.yeojz.dev/api/otplib/
+- `@otplib/uri`: https://otplib.yeojz.dev/api/%40otplib/uri/
+
+## Installation
 
 ```bash
-# Using npm
 npm install totpify
-
-# Using yarn
-yarn add totpify
-
-# Using pnpm
-pnpm add totpify
 ```
 
-## 🚀 Quick Start
+Node.js `18+` is recommended.
 
-### Generate a TOTP Code
+## Quick Start
+
+### Generate and verify a TOTP code
 
 ```js
-const { generateTOTP } = require('totpify');
+const { generateTOTP, verifyTOTP } = require('totpify');
 
-// Generate a code using the default SHA-1 algorithm
 const secret = 'JBSWY3DPEHPK3PXP';
-const code = generateTOTP(secret);
-console.log(`TOTP Code: ${code}`);
-
-// With options
-const codeWithOptions = generateTOTP(secret, {
+const code = generateTOTP(secret, {
   algorithm: 'SHA-256',
-  digits: 8,
-  period: 30
+  digits: 6,
+  period: 30,
 });
-console.log(`TOTP Code (8-digit, SHA-256): ${codeWithOptions}`);
+
+const result = verifyTOTP(code, secret, {
+  algorithm: 'SHA-256',
+  digits: 6,
+  period: 30,
+  window: 1,
+});
+
+console.log(code);
+console.log(result);
 ```
 
-### Verify a TOTP Code
+### Create a full enrollment bundle
 
 ```js
-const { verifyTOTP } = require('totpify');
+const { createEnrollmentBundle } = require('totpify');
 
-const secret = 'JBSWY3DPEHPK3PXP';
-const userProvidedCode = '123456';
+async function main() {
+  const bundle = await createEnrollmentBundle({
+    issuer: 'Acme',
+    account: 'ops@acme.com',
+    secretByteLength: 20,
+    algorithm: 'SHA-256',
+    digits: 8,
+    period: 30,
+    recoveryCodes: { count: 6 },
+  });
 
-const result = verifyTOTP(userProvidedCode, secret, {
-  window: 1, // Allow 1 step before and after (30 seconds each)
-  algorithm: 'SHA-1'
-});
-
-if (result.valid) {
-  console.log('Code is valid!');
-  console.log(`Time drift: ${result.delta} periods`);
-} else {
-  console.log('Invalid code!');
+  console.log(bundle.secret);
+  console.log(bundle.otpauthUri);
+  console.log(bundle.qrCodeDataUrl);
+  console.log(bundle.recoveryCodes);
 }
+
+main();
 ```
 
-### Generate a QR Code
+### Use policy-driven advanced verification
 
 ```js
-const { generateQRCode } = require('totpify');
+const {
+  createVerifier,
+  MemoryReplayStore,
+} = require('totpify');
 
-const secret = 'JBSWY3DPEHPK3PXP';
+async function main() {
+  const verifier = createVerifier({
+    policy: 'admin',
+    replayStore: new MemoryReplayStore(),
+    diagnostics: 'safe',
+    onEvent(event) {
+      console.log(event);
+    },
+  });
 
-// Generate a QR code for the user to scan with their authenticator app
-generateQRCode(secret, {
-  issuer: 'My App',
-  account: 'user@example.com'
-}).then(dataUrl => {
-  console.log('QR Code (data URL):', dataUrl);
-  // You can embed this data URL in an <img> tag
-});
+  const result = await verifier.verify({
+    token: '123456',
+    secret: 'JBSWY3DPEHPK3PXP',
+    factorId: 'otp_factor_1',
+    subject: 'user_42',
+    context: {
+      ip: '203.0.113.10',
+      route: '/login/verify-otp',
+    },
+  });
+
+  console.log(result);
+}
+
+main();
 ```
 
-## 📋 API Documentation
+> Warning
+>
+> `MemoryReplayStore` is mainly for development, tests, demos, or single-process deployments.
+> It is not the recommended production replay-protection mechanism.
+> In production, use a shared backing store such as Redis or a database so replay detection works across processes and instances.
 
-### Core Functions
+### Generate and store recovery codes
 
-#### `generateTOTP(secret, options?)`
+```js
+const {
+  createRecoveryCodeSet,
+  verifyRecoveryCode,
+} = require('totpify');
 
-Generates a Time-Based One-Time Password.
+const recoverySet = createRecoveryCodeSet({ count: 8 });
 
-**Parameters:**
-- `secret` (string | Uint8Array): Base32 encoded secret or raw bytes
-- `options` (object, optional):
-  - `algorithm` ('SHA-1' | 'SHA-256' | 'SHA-512'): Hash algorithm (default: 'SHA-1')
-  - `digits` (number): Number of digits (default: 6)
-  - `period` (number): Token validity period in seconds (default: 30)
-  - `timestamp` (number): Custom timestamp for code generation (default: current time)
+console.log(recoverySet.codes);
+console.log(recoverySet.hashes);
 
-**Returns:** string - The generated TOTP code
+const isValid = verifyRecoveryCode(recoverySet.codes[0], recoverySet.hashes[0]);
+console.log(isValid);
+```
 
-#### `verifyTOTP(token, secret, options?)`
+### Work with otpauth URIs directly
 
-Verifies a Time-Based One-Time Password.
+```js
+const {
+  generateOtpauthUri,
+  parseOtpauthUri,
+} = require('totpify');
 
-**Parameters:**
-- `token` (string): The TOTP code to verify
-- `secret` (string | Uint8Array): Base32 encoded secret or raw bytes
-- `options` (object, optional):
-  - `algorithm` ('SHA-1' | 'SHA-256' | 'SHA-512'): Hash algorithm (default: 'SHA-1')
-  - `digits` (number): Number of digits (default: 6)
-  - `period` (number): Token validity period in seconds (default: 30)
-  - `window` (number): Time drift window (default: 1)
-  - `timestamp` (number): Custom timestamp for verification (default: current time)
+const uri = generateOtpauthUri('JBSWY3DPEHPK3PXP', {
+  issuer: 'Acme',
+  account: 'user@example.com',
+  algorithm: 'SHA-512',
+  digits: 8,
+  period: 45,
+});
 
-**Returns:** object - `{ valid: boolean, delta?: number }`
+const parsed = parseOtpauthUri(uri);
 
-#### `generateQRCode(secret, options?)`
+console.log(uri);
+console.log(parsed);
+```
 
-Generates a QR code for easy setup with authenticator apps.
+## Current API
 
-**Parameters:**
-- `secret` (string): Base32 encoded secret
-- `options` (object, optional):
-  - `issuer` (string): Issuer name (default: 'Totpify')
-  - `account` (string): Account name (default: 'user')
-  - `width` (number): QR code width (default: 256)
-  - `height` (number): QR code height (default: 256)
+### Core OTP
 
-**Returns:** Promise<string> - Data URL containing the QR code
+- `generateTOTP(secret, options?)`
+- `verifyTOTP(token, secret, options?)`
+- `generateHOTP(secretBytes, counter, algorithm?, digits?)`
+- `generateRandomSecret(length?)`
 
-#### `generateRandomSecret(length?)`
+`generateRandomSecret(length?)` treats `length` as the number of random bytes before Base32 encoding.
 
-Generates a random Base32 secret key.
+Example:
 
-**Parameters:**
-- `length` (number, optional): Length of the secret key in bytes (default: 20)
+```js
+const { generateRandomSecret } = require('totpify');
 
-**Returns:** string - Base32 encoded random secret
+const secret = generateRandomSecret(20);
+console.log(secret);
+```
 
-## 🖥️ Command Line Interface
+### Base32
 
-The CLI tool is super handy for quick tests or scripting:
+- `encodeBase32(bytes)`
+- `decodeBase32(secret)`
+
+### otpauth and QR
+
+- `generateOtpauthUri(secret, options?)`
+- `parseOtpauthUri(uri)`
+- `generateQRCode(secret, options?)`
+
+### Recovery Codes
+
+- `generateRecoveryCodes(options?)`
+- `hashRecoveryCode(code, options?)`
+- `verifyRecoveryCode(code, hash)`
+- `createRecoveryCodeSet(options?, hashOptions?)`
+
+### Enrollment
+
+- `createEnrollmentBundle(options?)`
+
+### Advanced Verification
+
+- `createVerifier(options?)`
+- `resolveVerificationPolicy(policy, basePolicy?)`
+- `verificationPolicies`
+- `MemoryReplayStore`
+
+The enrollment bundle returns:
+
+- `secret`
+- `secretBytes`
+- `otpauthUri`
+- `qrCodeDataUrl`
+- `recoveryCodes`
+- `recoveryCodeHashes`
+- OTP metadata such as algorithm, digits, period, issuer, and account
+
+## Options Reference
+
+### `TOTPOptions`
+
+- `algorithm`: `'SHA-1' | 'SHA-256' | 'SHA-512'`
+- `digits`: integer from `6` to `10`
+- `period`: positive integer in seconds
+- `timestamp`: timestamp in milliseconds
+- `window`: non-negative integer verification window
+
+### `OtpauthUriOptions`
+
+- `issuer`
+- `account`
+- `algorithm`
+- `digits`
+- `period`
+
+### `RecoveryCodeOptions`
+
+- `count`: number of recovery codes to generate
+- `segments`: number of groups in each code
+- `segmentLength`: characters per group
+- `separator`: group separator, default `-`
+
+### `EnrollmentBundleOptions`
+
+- `issuer`
+- `account`
+- `secret`
+- `secretBytes`
+- `secretByteLength`
+- `algorithm`
+- `digits`
+- `period`
+- `qrCode`
+- `recoveryCodes`
+
+### `CreateVerifierOptions`
+
+- `policy`: `'strict' | 'balanced' | 'admin'` or policy overrides
+- `replayStore`: pluggable replay protection store
+- `diagnostics`: `off`, `safe`, or `debug`
+- `onEvent`: structured verification event hook
+
+### Verification Reasons
+
+The advanced verifier uses machine-readable reasons:
+
+- `valid`
+- `invalid_format`
+- `invalid_token`
+- `expired`
+- `future_skew`
+- `replay_detected`
+- `policy_blocked`
+
+## CLI
+
+After installing globally or using `npx`, `totpify` includes a CLI for common operations.
 
 ```bash
 # Show help
@@ -169,85 +350,168 @@ totpify help
 # Generate a TOTP code
 totpify generate JBSWY3DPEHPK3PXP
 
-# Generate with options
-totpify generate JBSWY3DPEHPK3PXP --algorithm=SHA-256 --digits=8
-
 # Verify a code
 totpify verify 123456 JBSWY3DPEHPK3PXP
 
-# Create a QR code
-totpify qrcode JBSWY3DPEHPK3PXP --issuer=MyApp --account=user@example.com output.png
+# Generate a QR code as a data URL
+totpify qrcode JBSWY3DPEHPK3PXP --issuer=Acme --account=user@example.com
 
-# Generate a random secret
-totpify create-secret
+# Save a QR code to a file
+totpify qrcode JBSWY3DPEHPK3PXP --issuer=Acme --account=user@example.com setup.png
+
+# Generate a Base32 secret from 20 random bytes
+totpify create-secret 20
+
+# Generate recovery codes
+totpify recovery-codes 8
 ```
 
-## 📱 Compatible Services
+### CLI output examples
 
-Totpify works great with all the popular authenticator apps and services:
+Successful verification:
 
-- Google Authenticator
-- Microsoft Authenticator
-- Authy
-- 1Password
-- LastPass
-- Discord
-- GitHub
-- Gmail
-- And tons more!
-
-## 🧪 Advanced Examples
-
-### Custom Time Period
-
-```javascript
-const { generateTOTP } = require('totpify');
-
-// Generate a code with a 60-second period instead of the default 30 seconds
-const code = generateTOTP('JBSWY3DPEHPK3PXP', { period: 60 });
+```bash
+$ totpify verify 123456 JBSWY3DPEHPK3PXP
+Valid (time drift: 0 periods)
 ```
 
-### Using Different Hash Algorithms
+Failed verification:
 
-```javascript
-const { generateTOTP } = require('totpify');
-
-const secret = 'JBSWY3DPEHPK3PXP';
-
-// SHA-1 (default, compatible with most services)
-const sha1Code = generateTOTP(secret, { algorithm: 'SHA-1' });
-
-// SHA-256 (more secure)
-const sha256Code = generateTOTP(secret, { algorithm: 'SHA-256' });
-
-// SHA-512 (most secure)
-const sha512Code = generateTOTP(secret, { algorithm: 'SHA-512' });
-
-console.log(`SHA-1: ${sha1Code}`);
-console.log(`SHA-256: ${sha256Code}`);
-console.log(`SHA-512: ${sha512Code}`);
+```bash
+$ totpify verify 000000 JBSWY3DPEHPK3PXP
+Invalid code
 ```
+
+QR generation to stdout:
+
+```bash
+$ totpify qrcode JBSWY3DPEHPK3PXP --issuer=Acme --account=user@example.com
+data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+```
+
+QR generation to a file:
+
+```bash
+$ totpify qrcode JBSWY3DPEHPK3PXP --issuer=Acme --account=user@example.com setup.png
+QR code saved to setup.png
+```
+
+Recovery code generation:
+
+```bash
+$ totpify recovery-codes 3
+8J4QW-M7Y2P
+K9TXV-2N8CD
+R6WQP-H3M7K
+```
+
+Notes:
+
+- Recovery codes are random, so the exact values will differ on each run.
+- Successful verification prints the same format shown above; the drift value can be non-zero if you are near a time-step boundary.
+
+## Standards
+
+`totpify` implements the two main OATH OTP standards used by mainstream authenticator apps and services:
+
+- RFC 4226 for HOTP
+- RFC 6238 for TOTP
+
+The test suite includes official standards vectors for both:
+
+- RFC 4226 Appendix D HOTP test vectors
+- RFC 6238 Appendix B TOTP test vectors
+
+Those vectors are validated in [`__tests__/totp.test.ts`](./__tests__/totp.test.ts).
+
+## Environment Support
+
+Support status below is intentionally conservative and reflects what is actually validated in this repository today.
+
+| Environment | Status | Notes |
+| --- | --- | --- |
+| Node.js | Supported and tested | `package.json` declares `>=18.0.0`. Build and test were verified locally on April 13, 2026 with Node `v24.14.0`. |
+| Browser | Not officially supported | The current implementation still depends on Node-oriented `crypto` and `Buffer` paths for OTP and recovery flows. |
+| Bun | Untested | `bun` was not available in the validation environment for this pass, so no support claim is made. |
+| Deno | Untested | `deno` was not available in the validation environment for this pass, so no support claim is made. |
+| Edge runtimes | Not officially supported | The current package output and crypto assumptions are Node-centric. |
+
+For authenticator app notes and a repeatable device-validation checklist, see [docs/compatibility.md](https://github.com/wickstudio/totpify/blob/master/docs/compatibility.md).
+
+## Real-World Use Cases
+
+`totpify` is already useful for more than just basic OTP math:
+
+- login and signup flows with authenticator app enrollment
+- admin dashboards that need one-click QR provisioning
+- support tooling that issues or rotates recovery codes
+- internal systems that need strong operator 2FA
+- bots and CLIs that prompt for OTP verification
+- account setup flows that need a single payload containing everything required for onboarding
+
+## Security Notes
+
+`totpify` now bakes in a few important best practices:
+
+- TOTP verification uses timing-safe comparison
+- recovery code hashes are derived with `scrypt`
+- otpauth URIs validate secrets before generating setup payloads
+- token settings are validated instead of silently accepted
+- advanced verification can enforce replay protection with a pluggable store
+
+You should still handle a few things at the application layer:
+
+- encrypt or otherwise protect stored TOTP secrets
+- store only hashed recovery codes
+- add replay protection if you want to block reuse within the same time step
+- audit failed verification attempts in your own auth system
+- rate-limit verification endpoints
+
+For production use, the recommended path is:
+
+1. Use `createVerifier()` instead of wiring drift and replay checks yourself.
+2. Pick a preset policy and override only what you must.
+3. Back replay protection with a shared store such as Redis or your database.
+4. Persist only recovery code hashes, not raw recovery codes.
+
+## Testing and Quality
+
+The package currently includes coverage for:
+
+- TOTP generation and verification
+- RFC 4226 HOTP vectors
+- RFC 6238 TOTP vectors
+- Base32 round-trips
+- QR generation
+- otpauth URI generation and parsing
+- recovery code creation and hashing
+- enrollment bundle creation
+- CLI behavior
+- advanced verifier policies, replay detection, and diagnostics
+
+## Roadmap
+
+The library is already more capable than a plain OTP helper, but there is still room to make it stand out further:
+
+- policy presets like `strict`, `balanced`, and `admin`
+- replay detection hooks
+- shared-store replay adapters
+- recovery code consumption helpers
+- secret rotation and migration flows
+- framework adapters for Express, Fastify, NestJS, and Next.js
+- audit-safe diagnostics and event hooks
+- tenant-aware enrollment defaults
 
 ## Contributing
 
-Got ideas? Contributions are welcome! Feel free to open issues or submit PRs.
+Issues and pull requests are welcome. The most valuable contributions right now are:
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/cool-feature`)
-3. Commit your changes (`git commit -m 'Add some cool feature'`)
-4. Push to the branch (`git push origin feature/cool-feature`)
-5. Open a Pull Request
+- interoperability tests with real authenticator apps
+- replay-protection primitives
+- framework integration packages
+- deeper recovery and operator workflows
+- documentation improvements and deployment examples
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 📬 Contact
-
-- GitHub: [wickstudio](https://github.com/wickstudio)
-- Discord: [discord.gg/wicks](https://discord.gg/wicks)
-- Email: [info@wick-studio.com](mailto:info@wick-studio.com)
-
----
-
-Made with ❤️ by [Wick Studio](https://github.com/wickstudio)
+MIT

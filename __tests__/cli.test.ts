@@ -4,14 +4,14 @@ import * as fs from 'fs';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
-const cliPath = path.resolve(__dirname, '../src/cli.ts');
+const cliPath = path.resolve(__dirname, '../dist/cli.js');
 
 describe('Totpify - CLI Interface', () => {
   const testSecret = 'JBSWY3DPEHPK3PXP';
   
   const runCLI = async (args: string): Promise<{stdout: string, stderr: string}> => {
     try {
-      return await execAsync(`ts-node ${cliPath} ${args}`);
+      return await execAsync(`node "${cliPath}" ${args}`);
     } catch (error) {
       return error as any;
     }
@@ -81,18 +81,18 @@ describe('Totpify - CLI Interface', () => {
   describe('Secret Generation', () => {
     it('should create a valid Base32 secret with default length', async () => {
       const { stdout } = await runCLI('create-secret');
-      expect(stdout.trim()).toMatch(/^[A-Z2-7]{20}$/);
+      expect(stdout.trim()).toMatch(/^[A-Z2-7]{32}$/);
     });
     
     it('should create a valid Base32 secret with custom length', async () => {
       const { stdout } = await runCLI('create-secret 32');
-      expect(stdout.trim()).toMatch(/^[A-Z2-7]{32}$/);
+      expect(stdout.trim()).toMatch(/^[A-Z2-7]{52}$/);
     });
     
     it('should error on invalid length parameter', async () => {
       const result = await runCLI('create-secret -5');
       expect(result.stderr).toBeTruthy();
-      expect(result.stderr).toContain('Length must be a positive number');
+      expect(result.stderr).toContain('Bytes must be a positive number');
     });
   });
 
@@ -101,13 +101,13 @@ describe('Totpify - CLI Interface', () => {
       const { stdout: code } = await runCLI(`generate ${testSecret}`);
       
       const { stdout: verificationResult } = await runCLI(`verify ${code.trim()} ${testSecret}`);
-      expect(verificationResult).toContain('Valid');
+      expect(verificationResult.trim()).toMatch(/^Valid \(time drift: -?\d+ periods\)$/);
     }, 10000);
     
     it('should reject an invalid TOTP code', async () => {
       const result = await runCLI(`verify 000000 ${testSecret}`);
       
-      expect(result.stdout).toContain('Invalid code');
+      expect(result.stdout.trim()).toBe('Invalid code');
     }, 10000);
     
     it('should error when code and secret are not provided', async () => {
@@ -142,7 +142,7 @@ describe('Totpify - CLI Interface', () => {
     it('should save QR code to a file when path is provided', async () => {
       const { stdout } = await runCLI(`qrcode ${testSecret} ${tempQrFile}`);
       
-      expect(stdout).toContain(`QR code saved to ${tempQrFile}`);
+      expect(stdout.trim()).toBe(`QR code saved to ${tempQrFile}`);
       
       expect(fs.existsSync(tempQrFile)).toBe(true);
       const fileStats = fs.statSync(tempQrFile);
@@ -175,12 +175,22 @@ describe('Totpify - CLI Interface', () => {
     
     it('should validate digits parameter', async () => {
       const result = await runCLI(`generate ${testSecret} --digits=9`);
-      expect(result.stderr).toContain('Digits must be 6 or 8');
+      expect(result.stdout.trim()).toMatch(/^\d{9}$/);
     });
     
     it('should validate period parameter', async () => {
       const result = await runCLI(`generate ${testSecret} --period=-30`);
       expect(result.stderr).toContain('Invalid period');
+    });
+  });
+
+  describe('Recovery Codes', () => {
+    it('should generate recovery codes from the CLI', async () => {
+      const { stdout } = await runCLI('recovery-codes 3');
+      const codes = stdout.trim().split(/\r?\n/);
+
+      expect(codes).toHaveLength(3);
+      codes.forEach((code) => expect(code).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/));
     });
   });
 });
